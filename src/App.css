@@ -244,6 +244,7 @@ a {
   color: white;
   font-size: 13px;
   font-weight: 700;
+  border: none;
   transition: 0.2s;
 }
 
@@ -623,6 +624,129 @@ a {
   text-align: center;
   color: #9aa19c;
   font-size: 10px;
+}
+
+/* === HACKATHON INNOVATION UPGRADES === */
+
+.action-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+.welcome-button.secondary {
+  background: #ffffff;
+  color: #496650;
+  border: 1px solid #c5d6c7;
+}
+
+.welcome-button.secondary:hover {
+  background: #f0f6f0;
+}
+
+.alert-banner {
+  background: #fdf2f0;
+  border-left: 4px solid #d96b59;
+  padding: 15px 20px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.alert-banner.climate {
+  background: #fef8ec;
+  border-left-color: #d99b26;
+}
+
+.alert-banner h4 {
+  margin: 0 0 4px;
+  font-family: "Manrope", sans-serif;
+  font-size: 14px;
+  color: #5a2a22;
+}
+
+.alert-banner.climate h4 {
+  color: #664911;
+}
+
+.alert-banner p {
+  margin: 0;
+  font-size: 12px;
+  color: #6e4c46;
+  line-height: 1.5;
+}
+
+.badge-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.safety-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.safety-badge.heat {
+  background: #fef3dc;
+  color: #9c6c19;
+}
+
+.safety-badge.food {
+  background: #eef3ed;
+  color: #5d7963;
+}
+
+.voice-button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: #eee7f5;
+  color: #665479;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+}
+
+.voice-button:hover {
+  background: #dfd3ec;
+}
+
+.doctor-report {
+  background: #faf8f1;
+  border: 1px dashed #c5cbbd;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 22px;
+}
+
+.doctor-report h3 {
+  margin: 0 0 10px;
+  font-family: "Manrope", sans-serif;
+  font-size: 16px;
+}
+
+.temp-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #496650;
+  border: 1px solid #dce7dc;
 }
 
 /* MOBILE */
