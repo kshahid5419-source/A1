@@ -2,12 +2,467 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>medtrack</title>
+    <title>MedTrack — Smart Healthcare Companion</title>
+    <!-- Load React and Babel directly in the browser so no build step is needed -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: "DM Sans", sans-serif;
+        background: #f7f5ef;
+        color: #26352f;
+      }
+      button, input { font-family: inherit; }
+      button { cursor: pointer; }
+      a { color: inherit; text-decoration: none; }
+
+      .app { min-height: 100vh; display: flex; background: #f7f5ef; }
+      .sidebar {
+        width: 250px; min-height: 100vh; padding: 30px 22px;
+        background: #e7eee7; display: flex; flex-direction: column;
+        position: fixed; left: 0; top: 0; bottom: 0;
+      }
+      .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 45px; }
+      .brand-icon {
+        width: 43px; height: 43px; border-radius: 13px; background: #718f78;
+        color: white; display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: bold;
+      }
+      .brand h2 { margin: 0; font-family: "Manrope", sans-serif; font-size: 20px; }
+      .brand p { margin: 3px 0 0; color: #708078; font-size: 11px; }
+      .navigation { display: flex; flex-direction: column; gap: 8px; }
+      .nav-link {
+        display: flex; align-items: center; gap: 12px; padding: 13px 14px;
+        border-radius: 12px; color: #64736b; font-size: 14px; font-weight: 600; transition: 0.2s;
+      }
+      .nav-link:hover { background: #dce7dc; color: #496650; }
+      .nav-link.active {
+        background: #ffffff; color: #496650;
+        box-shadow: 0 3px 12px rgba(65, 85, 70, 0.07);
+      }
+      .nav-link span { font-size: 18px; }
+      .sidebar-note { margin-top: auto; padding: 18px; background: #f5f1fa; border-radius: 17px; }
+      .note-icon { font-size: 22px; }
+      .sidebar-note h3 { margin: 9px 0 5px; font-family: "Manrope", sans-serif; font-size: 14px; }
+      .sidebar-note p { margin: 0; color: #7b817f; font-size: 12px; line-height: 1.5; }
+      .sidebar-footer { margin: 18px 0 0; text-align: center; color: #8a9690; font-size: 11px; }
+      .main-content {
+        width: calc(100% - 250px); margin-left: 250px;
+        padding: 32px 45px; max-width: 1450px;
+      }
+      .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; }
+      .topbar h1 { margin: 3px 0 0; font-family: "Manrope", sans-serif; font-size: 30px; }
+      .eyebrow { margin: 0; color: #84928b; font-size: 10px; font-weight: 800; letter-spacing: 1.3px; }
+      .profile-circle {
+        width: 42px; height: 42px; border-radius: 50%; background: #d9cce9;
+        color: #665479; display: flex; align-items: center; justify-content: center; font-weight: 700;
+      }
+      .welcome-card {
+        min-height: 230px; padding: 34px 40px; border-radius: 25px; background: #dfeadd;
+        display: flex; align-items: center; justify-content: space-between;
+        overflow: hidden; margin-bottom: 25px;
+      }
+      .welcome-text { max-width: 650px; }
+      .welcome-label { margin: 0 0 8px; color: #718777; font-size: 10px; font-weight: 800; letter-spacing: 1.2px; }
+      .welcome-text h2 { margin: 0 0 10px; font-family: "Manrope", sans-serif; font-size: 29px; }
+      .welcome-text > p { margin: 0 0 20px; max-width: 590px; color: #647168; line-height: 1.6; font-size: 14px; }
+      .welcome-button {
+        display: inline-block; padding: 11px 17px; border-radius: 10px;
+        background: #718f78; color: white; font-size: 13px; font-weight: 700; border: none; transition: 0.2s;
+      }
+      .welcome-button:hover { background: #5f7d66; }
+      .welcome-button.secondary { background: #ffffff; color: #496650; border: 1px solid #c5d6c7; }
+      .welcome-button.secondary:hover { background: #f0f6f0; }
+      .action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+      .welcome-art { margin-right: 50px; }
+      .art-circle {
+        width: 135px; height: 135px; border-radius: 50%; background: #f4eee4;
+        color: #718f78; display: flex; align-items: center; justify-content: center;
+        font-size: 42px; position: relative; box-shadow: 0 15px 30px rgba(85, 105, 88, 0.08);
+      }
+      .art-heart { position: absolute; right: 3px; bottom: 2px; font-size: 27px; color: #b4869c; }
+      .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 17px; margin-bottom: 25px; }
+      .stat-card { background: white; border-radius: 18px; padding: 20px; box-shadow: 0 5px 20px rgba(50, 65, 55, 0.045); }
+      .stat-icon {
+        width: 35px; height: 35px; border-radius: 10px; display: flex;
+        align-items: center; justify-content: center; margin-bottom: 13px; font-size: 17px;
+      }
+      .stat-icon.green { background: #e0eee2; color: #638069; }
+      .stat-icon.purple { background: #eee7f5; color: #806c98; }
+      .stat-icon.peach { background: #f7e8dd; color: #ad7d64; }
+      .stat-card p { margin: 0; color: #758078; font-size: 12px; }
+      .stat-card h2 { margin: 4px 0; font-family: "Manrope", sans-serif; font-size: 28px; }
+      .stat-card span { color: #9aa39e; font-size: 11px; }
+      .content-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+      .panel { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 5px 20px rgba(50, 65, 55, 0.045); }
+      .panel-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+      .panel-heading h2 { margin: 4px 0 0; font-family: "Manrope", sans-serif; font-size: 20px; }
+      .count-pill { padding: 6px 10px; border-radius: 20px; background: #eef3ed; color: #708071; font-size: 11px; font-weight: 700; }
+      .add-icon {
+        width: 35px; height: 35px; border-radius: 10px; background: #f0eaf6;
+        color: #78658d; display: flex; align-items: center; justify-content: center; font-size: 20px;
+      }
+      .medicine-list { display: flex; flex-direction: column; gap: 11px; }
+      .medicine-item {
+        display: flex; align-items: center; gap: 13px; padding: 14px;
+        border: 1px solid #edf0ec; border-radius: 14px; transition: 0.2s;
+      }
+      .medicine-item:hover { border-color: #d7e2d7; background: #fcfdfb; }
+      .medicine-taken { background: #f5f8f4; opacity: 0.75; }
+      .medicine-icon {
+        width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px;
+        background: #e5eee4; color: #6c8872; display: flex; align-items: center; justify-content: center;
+      }
+      .medicine-details { flex: 1; }
+      .medicine-details h3 { margin: 0 0 3px; font-size: 14px; }
+      .medicine-details p { margin: 0 0 5px; color: #818a85; font-size: 11px; }
+      .medicine-time { color: #718578; font-size: 11px; font-weight: 600; }
+      .medicine-actions { display: flex; align-items: center; gap: 7px; }
+      .mark-button, .taken-button { border: none; padding: 8px 11px; border-radius: 9px; font-size: 11px; font-weight: 700; }
+      .mark-button { background: #e5eee4; color: #5d7963; }
+      .taken-button { background: #d8eadb; color: #4d7356; }
+      .delete-button {
+        width: 30px; height: 30px; border: none; border-radius: 8px;
+        background: #f8eeee; color: #a47777; font-size: 19px;
+      }
+      .voice-button {
+        width: 30px; height: 30px; border: none; border-radius: 8px;
+        background: #eee7f5; color: #665479; font-size: 14px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .support-message {
+        margin: 18px 0 0; padding: 12px; border-radius: 10px;
+        background: #faf8f1; color: #8a8d7f; text-align: center; font-size: 11px;
+      }
+      .empty-state { padding: 40px 15px; text-align: center; }
+      .empty-icon {
+        width: 50px; height: 50px; margin: auto; border-radius: 50%;
+        background: #eef3ed; color: #718f78; display: flex; align-items: center; justify-content: center; font-size: 23px;
+      }
+      .medicine-form { display: flex; flex-direction: column; }
+      .medicine-form label { margin: 0 0 7px; color: #526159; font-size: 12px; font-weight: 700; }
+      .medicine-form input {
+        width: 100%; padding: 12px 13px; margin-bottom: 17px;
+        border: 1px solid #e2e7e2; border-radius: 10px; outline: none;
+        background: #fbfcfa; color: #344039; font-size: 13px;
+      }
+      .form-hint { margin: -7px 0 17px; color: #929a95; font-size: 10px; line-height: 1.4; }
+      .submit-button {
+        border: none; padding: 13px; border-radius: 11px;
+        background: #718f78; color: white; font-size: 13px; font-weight: 700;
+      }
+      .privacy-note {
+        display: flex; align-items: center; gap: 8px; margin-top: 17px;
+        padding: 10px; border-radius: 9px; background: #f7f8f5;
+      }
+      .privacy-note p { margin: 0; color: #8a928d; font-size: 10px; line-height: 1.4; }
+      .page-footer { padding: 25px 0 5px; text-align: center; color: #9aa19c; font-size: 10px; }
+      .alert-banner {
+        background: #fdf2f0; border-left: 4px solid #d96b59; padding: 15px 20px;
+        border-radius: 14px; margin-bottom: 18px; display: flex; align-items: flex-start; gap: 12px;
+      }
+      .alert-banner.climate { background: #fef8ec; border-left-color: #d99b26; }
+      .alert-banner h4 { margin: 0 0 4px; font-family: "Manrope", sans-serif; font-size: 14px; color: #5a2a22; }
+      .alert-banner.climate h4 { color: #664911; }
+      .alert-banner p { margin: 0; font-size: 12px; color: #6e4c46; line-height: 1.5; }
+      .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+      .safety-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+      .safety-badge.heat { background: #fef3dc; color: #9c6c19; }
+      .safety-badge.food { background: #eef3ed; color: #5d7963; }
+      .doctor-report {
+        background: #faf8f1; border: 1px dashed #c5cbbd; border-radius: 16px;
+        padding: 20px; margin-bottom: 22px;
+      }
+      .temp-control {
+        display: inline-flex; align-items: center; gap: 8px; background: #ffffff;
+        padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 700;
+        color: #496650; border: 1px solid #dce7dc;
+      }
+      @media (max-width: 1000px) {
+        .sidebar { width: 210px; }
+        .main-content { width: calc(100% - 210px); margin-left: 210px; padding: 25px; }
+        .content-grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 750px) {
+        .app { display: block; }
+        .sidebar { position: static; width: 100%; min-height: auto; padding: 18px; }
+        .navigation { flex-direction: row; overflow-x: auto; }
+        .sidebar-note, .sidebar-footer, .welcome-art { display: none; }
+        .main-content { width: 100%; margin-left: 0; padding: 20px; }
+        .stats-grid { grid-template-columns: 1fr; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      const HEAT_SENSITIVE_MEDS = ["insulin", "amoxicillin", "augmentin", "eye drops", "thyroxine", "levothyroxine"];
+      const INTERACTION_PAIRS = [
+        {
+          meds: ["aspirin", "warfarin"],
+          warning: "High Bleeding Risk: Taking Aspirin and Warfarin together increases internal bleeding risk. Consult a doctor immediately."
+        },
+        {
+          meds: ["ibuprofen", "lisinopril"],
+          warning: "Kidney & Blood Pressure Alert: Ibuprofen can reduce the effectiveness of Lisinopril and strain the kidneys."
+        },
+        {
+          meds: ["calcium", "levothyroxine"],
+          warning: "Absorption Clash: Calcium blocks Levothyroxine from working properly. Space these doses at least 4 hours apart."
+        }
+      ];
+
+      function App() {
+        const [medicines, setMedicines] = useState(() => {
+          const saved = localStorage.getItem("medtrack_data");
+          if (saved) return JSON.parse(saved);
+          return [
+            { id: 1, name: "Lisinopril", dosage: "10mg • Morning with water", time: "08:00", taken: true },
+            { id: 2, name: "Insulin Glargine", dosage: "15 Units • Subcutaneous", time: "13:00", taken: false },
+            { id: 3, name: "Aspirin", dosage: "75mg • After dinner", time: "20:00", taken: false }
+          ];
+        });
+
+        const [name, setName] = useState("");
+        const [dosage, setDosage] = useState("");
+        const [time, setTime] = useState("09:00");
+        const [activeTab, setActiveTab] = useState("dashboard");
+        const [showDoctorReport, setShowDoctorReport] = useState(false);
+        const [localTemp, setLocalTemp] = useState(34);
+
+        useEffect(() => {
+          localStorage.setItem("medtrack_data", JSON.stringify(medicines));
+        }, [medicines]);
+
+        const totalMeds = medicines.length;
+        const takenCount = medicines.filter((m) => m.taken).length;
+        const adherenceRate = totalMeds === 0 ? 0 : Math.round((takenCount / totalMeds) * 100);
+
+        const activeWarnings = INTERACTION_PAIRS.filter((pair) =>
+          pair.meds.every((medKeyword) =>
+            medicines.some((m) => m.name.toLowerCase().includes(medKeyword))
+          )
+        );
+
+        const isHeatSensitive = (medName) =>
+          HEAT_SENSITIVE_MEDS.some((keyword) => medName.toLowerCase().includes(keyword));
+
+        const heatAtRiskMeds = medicines.filter((m) => isHeatSensitive(m.name));
+
+        const handleAddMedicine = (e) => {
+          e.preventDefault();
+          if (!name.trim() || !dosage.trim()) return;
+          setMedicines([
+            ...medicines,
+            { id: Date.now(), name: name.trim(), dosage: dosage.trim(), time: time || "09:00", taken: false }
+          ]);
+          setName("");
+          setDosage("");
+          setTime("09:00");
+        };
+
+        const toggleTaken = (id) => {
+          setMedicines(medicines.map((med) => (med.id === id ? { ...med, taken: !med.taken } : med)));
+        };
+
+        const deleteMedicine = (id) => {
+          setMedicines(medicines.filter((med) => med.id !== id));
+        };
+
+        const speakMedicine = (med) => {
+          if (!("speechSynthesis" in window)) return alert("Voice reading is not supported in this browser.");
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(
+            `Medicine: ${med.name}. Dosage: ${med.dosage}. Scheduled time: ${med.time}.`
+          );
+          utterance.rate = 0.95;
+          window.speechSynthesis.speak(utterance);
+        };
+
+        const loadDemoInteraction = () => {
+          if (!medicines.some((m) => m.name.toLowerCase().includes("warfarin"))) {
+            setMedicines([
+              ...medicines,
+              { id: Date.now(), name: "Warfarin", dosage: "5mg • Evening dose", time: "21:00", taken: false }
+            ]);
+          }
+        };
+
+        return (
+          <div className="app">
+            <aside className="sidebar">
+              <div className="brand">
+                <div className="brand-icon">✚</div>
+                <div>
+                  <h2>MedTrack</h2>
+                  <p>Smart Care Companion</p>
+                </div>
+              </div>
+              <nav className="navigation">
+                <a href="#dashboard" className={`nav-link ${activeTab === "dashboard" ? "active" : ""}`} onClick={() => setActiveTab("dashboard")}>
+                  <span>🌿</span> Daily Schedule
+                </a>
+                <a href="#safety" className={`nav-link ${activeTab === "safety" ? "active" : ""}`} onClick={() => setActiveTab("safety")}>
+                  <span>🛡️</span> Safety & Climate ({activeWarnings.length + (heatAtRiskMeds.length > 0 ? 1 : 0)})
+                </a>
+                <a href="#report" className={`nav-link ${showDoctorReport ? "active" : ""}`} onClick={(e) => { e.preventDefault(); setShowDoctorReport(!showDoctorReport); }}>
+                  <span>📋</span> Doctor Triage Card
+                </a>
+              </nav>
+              <div className="sidebar-note">
+                <div className="note-icon">🌡️</div>
+                <h3>Climate Storage Watch</h3>
+                <p>Local temp: <strong>{localTemp}°C</strong>. {heatAtRiskMeds.length > 0 ? `${heatAtRiskMeds.length} medicine(s) require cool storage.` : "All safe."}</p>
+              </div>
+              <p className="sidebar-footer">Offline-First • 100% Private</p>
+            </aside>
+
+            <main className="main-content" id="dashboard">
+              <header className="topbar">
+                <div>
+                  <p className="eyebrow">INTERNATIONAL HEALTHCARE HACKATHON EDITION</p>
+                  <h1>Your Daily Wellness</h1>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div className="temp-control">
+                    🌡️ {localTemp}°C
+                    <button type="button" onClick={() => setLocalTemp(localTemp === 34 ? 22 : 34)} style={{ border: "none", background: "#e5eee4", borderRadius: "6px", padding: "3px 7px", fontSize: "10px", fontWeight: "700" }}>
+                      {localTemp >= 30 ? "Cool Down" : "Simulate Heatwave"}
+                    </button>
+                  </div>
+                  <div className="profile-circle">SK</div>
+                </div>
+              </header>
+
+              <section className="welcome-card">
+                <div className="welcome-text">
+                  <p className="welcome-label">INTELLIGENT ADHERENCE & SAFETY</p>
+                  <h2>Stay consistent, stay protected.</h2>
+                  <p>MedTrack scans for dangerous drug interactions, protects heat-sensitive medicines during warm weather, and reads instructions aloud.</p>
+                  <div className="action-bar">
+                    <a href="#add-form" className="welcome-button">+ Add Medication</a>
+                    <button type="button" className="welcome-button secondary" onClick={loadDemoInteraction}>⚡ Simulate Drug Clash (Judge Demo)</button>
+                    <button type="button" className="welcome-button secondary" onClick={() => setShowDoctorReport(!showDoctorReport)}>🩺 {showDoctorReport ? "Hide" : "View"} 10-Sec Doctor Report</button>
+                  </div>
+                </div>
+                <div className="welcome-art">
+                  <div className="art-circle">💊<span className="art-heart">💚</span></div>
+                </div>
+              </section>
+
+              <div id="safety">
+                {activeWarnings.map((item, idx) => (
+                  <div key={idx} className="alert-banner">
+                    <span>⚠️</span>
+                    <div><h4>Drug Interaction Detected</h4><p>{item.warning}</p></div>
+                  </div>
+                ))}
+                {localTemp >= 30 && heatAtRiskMeds.length > 0 && (
+                  <div className="alert-banner climate">
+                    <span>☀️</span>
+                    <div>
+                      <h4>Heatwave Potency Alert ({localTemp}°C Outdoors)</h4>
+                      <p><strong>{heatAtRiskMeds.map((m) => m.name).join(", ")}</strong> can spoil above 25°C. Store in a refrigerator or cool shaded place.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {showDoctorReport && (
+                <div className="doctor-report">
+                  <h3>🩺 Clinical Triage Snapshot (10-Second Doctor Summary)</h3>
+                  <p style={{ fontSize: "13px", color: "#526159", lineHeight: "1.6", margin: 0 }}>
+                    <strong>Adherence Score:</strong> {adherenceRate}% ({takenCount} of {totalMeds} doses completed)<br />
+                    <strong>Active Prescriptions:</strong> {medicines.map((m) => `${m.name} (${m.dosage} at ${m.time})`).join(" | ") || "None"}<br />
+                    <strong>Safety Status:</strong> {activeWarnings.length > 0 ? `${activeWarnings.length} potential drug clash(es) flagged.` : "No interactions detected."}
+                  </p>
+                </div>
+              )}
+
+              <section className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-icon green">✓</div>
+                  <p>Completed Doses</p>
+                  <h2>{takenCount} / {totalMeds}</h2>
+                  <span>{takenCount === totalMeds && totalMeds > 0 ? "All done for today!" : "Keep going steadily"}</span>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon purple">📊</div>
+                  <p>Adherence Score</p>
+                  <h2>{adherenceRate}%</h2>
+                  <span>{adherenceRate >= 80 ? "Optimal clinical range" : "Caregiver backup active"}</span>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon peach">🛡️</div>
+                  <p>Safety & Storage Checks</p>
+                  <h2>{activeWarnings.length === 0 ? "Clear" : `${activeWarnings.length} Alert`}</h2>
+                  <span>{heatAtRiskMeds.length} heat-sensitive item(s)</span>
+                </div>
+              </section>
+
+              <section className="content-grid">
+                <div className="panel">
+                  <div className="panel-heading">
+                    <div><p className="eyebrow">TODAY'S TIMELINE</p><h2>Medication Schedule</h2></div>
+                    <span className="count-pill">{totalMeds} Prescriptions</span>
+                  </div>
+                  <div className="medicine-list">
+                    {medicines.map((med) => (
+                      <div key={med.id} className={`medicine-item ${med.taken ? "medicine-taken" : ""}`}>
+                        <div className="medicine-icon">{med.taken ? "✓" : "💊"}</div>
+                        <div className="medicine-details">
+                          <h3>{med.name}</h3>
+                          <p>{med.dosage}</p>
+                          <span className="medicine-time">⏰ Scheduled for {med.time}</span>
+                          <div className="badge-row">
+                            {isHeatSensitive(med.name) && <span className="safety-badge heat">❄️ Cool Storage (&lt;25°C)</span>}
+                            <span className="safety-badge food">🔊 Voice Enabled</span>
+                          </div>
+                        </div>
+                        <div className="medicine-actions">
+                          <button type="button" className="voice-button" onClick={() => speakMedicine(med)}>🔊</button>
+                          <button type="button" className={med.taken ? "taken-button" : "mark-button"} onClick={() => toggleTaken(med.id)}>
+                            {med.taken ? "✓ Taken" : "Mark Taken"}
+                          </button>
+                          <button type="button" className="delete-button" onClick={() => deleteMedicine(med.id)}>×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="panel" id="add-form">
+                  <div className="panel-heading">
+                    <div><p className="eyebrow">NEW ENTRY</p><h2>Add Medication</h2></div>
+                    <div className="add-icon">+</div>
+                  </div>
+                  <form className="medicine-form" onSubmit={handleAddMedicine}>
+                    <label>Medicine Name</label>
+                    <input type="text" placeholder="e.g., Amoxicillin, Warfarin, Insulin" value={name} onChange={(e) => setName(e.target.value)} required />
+                    <label>Dosage & Instructions</label>
+                    <input type="text" placeholder="e.g., 500mg • 1 tablet after meal" value={dosage} onChange={(e) => setDosage(e.target.value)} required />
+                    <label>Reminder Time</label>
+                    <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+                    <button type="submit" className="submit-button">Save to Daily Schedule</button>
+                  </form>
+                </div>
+              </section>
+            </main>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
   </body>
 </html>
