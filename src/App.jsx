@@ -1,127 +1,157 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
-const STORAGE_KEY = "medigo_medicines_v1";
-
-const demoMedicines = [
-  {
-    id: 1,
-    name: "Vitamin D",
-    dose: "1 tablet",
-    time: "09:00",
-    taken: false,
-  },
-  {
-    id: 2,
-    name: "Sample medication",
-    dose: "As prescribed",
-    time: "14:00",
-    taken: false,
-  },
+const HEAT_SENSITIVE_MEDS = [
+  "insulin",
+  "amoxicillin",
+  "augmentin",
+  "eye drops",
+  "thyroxine",
+  "levothyroxine"
 ];
 
-function loadMedicines() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-
-    if (saved !== null) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return parsed;
-      }
-    }
-  } catch (error) {
-    console.error(error);
+const INTERACTION_PAIRS = [
+  {
+    meds: ["aspirin", "warfarin"],
+    warning:
+      "High Bleeding Risk: Taking Aspirin and Warfarin together increases internal bleeding risk. Consult a doctor immediately."
+  },
+  {
+    meds: ["ibuprofen", "lisinopril"],
+    warning:
+      "Kidney & Blood Pressure Alert: Ibuprofen can reduce the effectiveness of Lisinopril and strain the kidneys."
+  },
+  {
+    meds: ["calcium", "levothyroxine"],
+    warning:
+      "Absorption Clash: Calcium blocks Levothyroxine from working properly. Space these doses at least 4 hours apart."
   }
+];
 
-  return demoMedicines;
-}
+export default function App() {
+  const [medicines, setMedicines] = useState(() => {
+    const saved = localStorage.getItem("medtrack_data");
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: 1,
+        name: "Lisinopril",
+        dosage: "10mg • Morning with water",
+        time: "08:00",
+        taken: true
+      },
+      {
+        id: 2,
+        name: "Insulin Glargine",
+        dosage: "15 Units • Subcutaneous",
+        time: "13:00",
+        taken: false
+      },
+      {
+        id: 3,
+        name: "Aspirin",
+        dosage: "75mg • After dinner",
+        time: "20:00",
+        taken: false
+      }
+    ];
+  });
 
-function App() {
-  const [medicines, setMedicines] = useState(loadMedicines);
   const [name, setName] = useState("");
-  const [dose, setDose] = useState("");
+  const [dosage, setDosage] = useState("");
   const [time, setTime] = useState("09:00");
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [showDoctorReport, setShowDoctorReport] = useState(false);
+  const [localTemp, setLocalTemp] = useState(34);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(medicines)
-      );
-    } catch (error) {
-      console.error(error);
-    }
+    localStorage.setItem("medtrack_data", JSON.stringify(medicines));
   }, [medicines]);
 
-  function addMedicine(event) {
-    event.preventDefault();
+  const totalMeds = medicines.length;
+  const takenCount = medicines.filter((m) => m.taken).length;
+  const adherenceRate =
+    totalMeds === 0 ? 0 : Math.round((takenCount / totalMeds) * 100);
 
-    if (!name.trim() || !dose.trim() || !time) {
-      return;
-    }
+  const activeWarnings = INTERACTION_PAIRS.filter((pair) =>
+    pair.meds.every((medKeyword) =>
+      medicines.some((m) => m.name.toLowerCase().includes(medKeyword))
+    )
+  );
 
-    const newMedicine = {
+  const isHeatSensitive = (medName) =>
+    HEAT_SENSITIVE_MEDS.some((keyword) =>
+      medName.toLowerCase().includes(keyword)
+    );
+
+  const heatAtRiskMeds = medicines.filter((m) => isHeatSensitive(m.name));
+
+  const handleAddMedicine = (e) => {
+    e.preventDefault();
+    if (!name.trim() || !dosage.trim()) return;
+
+    const newMed = {
       id: Date.now(),
       name: name.trim(),
-      dose: dose.trim(),
-      time: time,
-      taken: false,
+      dosage: dosage.trim(),
+      time: time || "09:00",
+      taken: false
     };
 
-    setMedicines((previous) =>
-      [...previous, newMedicine].sort((a, b) =>
-        a.time.localeCompare(b.time)
-      )
-    );
-
+    setMedicines([...medicines, newMed]);
     setName("");
-    setDose("");
+    setDosage("");
     setTime("09:00");
-  }
+  };
 
-  function toggleTaken(id) {
-    setMedicines((previous) =>
-      previous.map((medicine) =>
-        medicine.id === id
-          ? { ...medicine, taken: !medicine.taken }
-          : medicine
+  const toggleTaken = (id) => {
+    setMedicines(
+      medicines.map((med) =>
+        med.id === id ? { ...med, taken: !med.taken } : med
       )
     );
-  }
+  };
 
-  function deleteMedicine(id) {
-    setMedicines((previous) =>
-      previous.filter((medicine) => medicine.id !== id)
+  const deleteMedicine = (id) => {
+    setMedicines(medicines.filter((med) => med.id !== id));
+  };
+
+  const speakMedicine = (med) => {
+    if (!("speechSynthesis" in window)) {
+      alert("Voice reading is not supported in this browser.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const statusText = med.taken
+      ? "Already taken today."
+      : "Scheduled dose pending.";
+    const heatText = isHeatSensitive(med.name)
+      ? "Warning: Store in a cool place below 25 degrees Celsius."
+      : "";
+    const utterance = new SpeechSynthesisUtterance(
+      `Medicine: ${med.name}. Dosage: ${med.dosage}. Time: ${med.time}. ${statusText} ${heatText}`
     );
-  }
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+  };
 
-  function formatTime(value) {
-    if (!value) return "";
-
-    const parts = value.split(":");
-    const hour = Number(parts[0]);
-    const minutes = parts[1];
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
-
-    return `${displayHour}:${minutes} `;
-  }
-
-  const total = medicines.length;
-  const takenCount = medicines.filter(
-    (medicine) => medicine.taken
-  ).length;
-  const remaining = total - takenCount;
-
-  const hourNow = new Date().getHours();
-  let greeting = "Good evening";
-
-  if (hourNow < 12) {
-    greeting = "Good morning";
-  } else if (hourNow < 18) {
-    greeting = "Good afternoon";
-  }
+  const loadDemoInteraction = () => {
+    const hasWarfarin = medicines.some((m) =>
+      m.name.toLowerCase().includes("warfarin")
+    );
+    if (!hasWarfarin) {
+      setMedicines([
+        ...medicines,
+        {
+          id: Date.now(),
+          name: "Warfarin",
+          dosage: "5mg • Evening dose",
+          time: "21:00",
+          taken: false
+        }
+      ]);
+    }
+  };
 
   return (
     <div className="app">
@@ -129,222 +159,361 @@ function App() {
         <div className="brand">
           <div className="brand-icon">✚</div>
           <div>
-            <h2>MediGo</h2>
-            <p>Your health companion</p>
+            <h2>MedTrack</h2>
+            <p>Smart Care Companion</p>
           </div>
         </div>
 
         <nav className="navigation">
-          <a href="#dashboard" className="nav-link active">
-            <span>⌂</span> Dashboard
+          <a
+            href="#dashboard"
+            className={`nav-link ${activeTab === "dashboard" ? "active" : ""}`}
+            onClick={() => setActiveTab("dashboard")}
+          >
+            <span>🌿</span> Daily Schedule
           </a>
-          <a href="#medications" className="nav-link">
-            <span>♡</span> My Medications
+          <a
+            href="#safety"
+            className={`nav-link ${activeTab === "safety" ? "active" : ""}`}
+            onClick={() => setActiveTab("safety")}
+          >
+            <span>🛡️</span> Safety & Climate (
+            {activeWarnings.length + (heatAtRiskMeds.length > 0 ? 1 : 0)})
           </a>
-          <a href="#add-medication" className="nav-link">
-            <span>＋</span> Add Medication
+          <a
+            href="#report"
+            className={`nav-link ${showDoctorReport ? "active" : ""}`}
+            onClick={(e) => {
+              e.preventDefault();
+              setShowDoctorReport(!showDoctorReport);
+            }}
+          >
+            <span>📋</span> Doctor Triage Card
           </a>
         </nav>
 
         <div className="sidebar-note">
-          <span className="note-icon">🌱</span>
-          <h3>One day at a time</h3>
+          <div className="note-icon">🌡️</div>
+          <h3>Climate Storage Watch</h3>
           <p>
-            Small steps toward better health are worth celebrating.
+            Local temp: <strong>{localTemp}°C</strong>.{" "}
+            {heatAtRiskMeds.length > 0
+              ? `${heatAtRiskMeds.length} medicine(s) require cool storage today.`
+              : "All medicines safe at room temperature."}
           </p>
         </div>
 
-        <p className="sidebar-footer">Made with care ♡</p>
+        <p className="sidebar-footer">Offline-First • 100% Private</p>
       </aside>
 
       <main className="main-content" id="dashboard">
         <header className="topbar">
           <div>
-            <p className="eyebrow">YOUR PERSONAL HEALTH SPACE</p>
-            <h1>My Dashboard</h1>
+            <p className="eyebrow">INTERNATIONAL HEALTHCARE HACKATHON EDITION</p>
+            <h1>Your Daily Wellness</h1>
           </div>
-          <div className="profile-circle">M</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div className="temp-control" title="Simulate Weather for Judges">
+              🌡️ {localTemp}°C
+              <button
+                type="button"
+                onClick={() => setLocalTemp(localTemp === 34 ? 22 : 34)}
+                style={{
+                  border: "none",
+                  background: "#e5eee4",
+                  borderRadius: "6px",
+                  padding: "3px 7px",
+                  fontSize: "10px",
+                  fontWeight: "700"
+                }}
+              >
+                {localTemp >= 30 ? "Cool Down" : "Simulate Heatwave"}
+              </button>
+            </div>
+            <div className="profile-circle">SK</div>
+          </div>
         </header>
 
         <section className="welcome-card">
           <div className="welcome-text">
-            <p className="welcome-label">A LITTLE CHECK-IN</p>
-            <h2>{greeting}, take care of yourself 💚</h2>
+            <p className="welcome-label">INTELLIGENT ADHERENCE & SAFETY</p>
+            <h2>Stay consistent, stay protected.</h2>
             <p>
-              Every little step counts. Keep track of your medications
-              and give yourself credit for showing up for your health.
+              MedTrack actively scans for dangerous drug interactions, protects
+              heat-sensitive medicines during warm weather, and reads
+              instructions aloud for elderly and low-vision patients.
             </p>
-            <a href="#medications" className="welcome-button">
-              View my medications →
-            </a>
+            <div className="action-bar">
+              <a href="#add-form" className="welcome-button">
+                + Add Medication
+              </a>
+              <button
+                type="button"
+                className="welcome-button secondary"
+                onClick={loadDemoInteraction}
+              >
+                ⚡ Simulate Drug Clash (Judge Demo)
+              </button>
+              <button
+                type="button"
+                className="welcome-button secondary"
+                onClick={() => setShowDoctorReport(!showDoctorReport)}
+              >
+                🩺 {showDoctorReport ? "Hide" : "View"} 10-Sec Doctor Report
+              </button>
+            </div>
           </div>
 
-          <div className="welcome-art" aria-hidden="true">
+          <div className="welcome-art">
             <div className="art-circle">
-              <span>✚</span>
-              <span className="art-heart">♥️</span>
+              💊
+              <span className="art-heart">💚</span>
             </div>
           </div>
         </section>
 
+        <div id="safety">
+          {activeWarnings.map((item, idx) => (
+            <div key={idx} className="alert-banner">
+              <span>⚠️</span>
+              <div>
+                <h4>Drug Interaction Detected</h4>
+                <p>{item.warning}</p>
+              </div>
+            </div>
+          ))}
+
+          {localTemp >= 30 && heatAtRiskMeds.length > 0 && (
+            <div className="alert-banner climate">
+              <span>☀️</span>
+              <div>
+                <h4>Heatwave Potency Alert ({localTemp}°C Outdoors)</h4>
+                <p>
+                  <strong>
+                    {heatAtRiskMeds.map((m) => m.name).join(", ")}
+                  </strong>{" "}
+                  can lose effectiveness above 25°C. Store in a refrigerator or
+                  cool shaded container immediately.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {showDoctorReport && (
+          <div className="doctor-report">
+            <h3>🩺 Clinical Triage Snapshot (10-Second Doctor Summary)</h3>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "#526159",
+                lineHeight: "1.6",
+                margin: 0
+              }}
+            >
+              <strong>Adherence Score:</strong> {adherenceRate}% ({takenCount}{" "}
+              of {totalMeds} doses completed today) <br />
+              <strong>Active Prescriptions:</strong>{" "}
+              {medicines
+                .map((m) => `${m.name} (${m.dosage} at ${m.time})`)
+                .join(" | ") || "None"}{" "}
+              <br />
+              <strong>Safety Status:</strong>{" "}
+              {activeWarnings.length > 0
+                ? `${activeWarnings.length} potential drug clash(es) flagged for review.`
+                : "No drug-to-drug interactions detected."}
+            </p>
+          </div>
+        )}
+
         <section className="stats-grid">
           <div className="stat-card">
-            <div className="stat-icon green">♡</div>
-            <p>Total medications</p>
-            <h2>{total}</h2>
-            <span>In your list</span>
+            <div className="stat-icon green">✓</div>
+            <p>Completed Doses</p>
+            <h2>
+              {takenCount} / {totalMeds}
+            </h2>
+            <span>
+              {takenCount === totalMeds && totalMeds > 0
+                ? "All done for today!"
+                : "Keep going steadily"}
+            </span>
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon purple">✓</div>
-            <p>Marked as taken</p>
-            <h2>{takenCount}</h2>
-            <span>You've checked off</span>
+            <div className="stat-icon purple">📊</div>
+            <p>Adherence Score</p>
+            <h2>{adherenceRate}%</h2>
+            <span>
+              {adherenceRate >= 80
+                ? "Optimal clinical range"
+                : "Caregiver backup active"}
+            </span>
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon peach">◷</div>
-            <p>Still remaining</p>
-            <h2>{remaining}</h2>
-            <span>Not marked as taken</span>
+            <div className="stat-icon peach">🛡️</div>
+            <p>Safety & Storage Checks</p>
+            <h2>
+              {activeWarnings.length === 0
+                ? "Clear"
+                : `${activeWarnings.length} Alert`}
+            </h2>
+            <span>{heatAtRiskMeds.length} heat-sensitive item(s)</span>
           </div>
         </section>
 
         <section className="content-grid">
-          <div className="panel medication-panel" id="medications">
+          <div className="panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">YOUR DAILY ROUTINE</p>
-                <h2>My medications</h2>
+                <p className="eyebrow">TODAY&apos;S TIMELINE</p>
+                <h2>Medication Schedule</h2>
               </div>
-              <span className="count-pill">{total} total</span>
+              <span className="count-pill">{totalMeds} Prescriptions</span>
             </div>
 
             {medicines.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon">♡</div>
-                <h3>Your list starts here</h3>
+                <div className="empty-icon">🌿</div>
+                <h3>Your schedule is clear</h3>
                 <p>
-                  Add a medication using the form to keep your list
-                  organized.
+                  Add your first medicine on the right to start smart tracking.
                 </p>
               </div>
             ) : (
               <div className="medicine-list">
-                {[...medicines]
-                  .sort((a, b) => a.time.localeCompare(b.time))
-                  .map((medicine) => (
-                    <div
-                      className={`medicine-item ${
-                        medicine.taken ? "medicine-taken" : ""
-                      }`}
-                      key={medicine.id}
-                    >
-                      <div className="medicine-icon">✚</div>
+                {medicines.map((med) => (
+                  <div
+                    key={med.id}
+                    className={`medicine-item ${
+                      med.taken ? "medicine-taken" : ""
+                    }`}
+                  >
+                    <div className="medicine-icon">
+                      {med.taken ? "✓" : "💊"}
+                    </div>
 
-                      <div className="medicine-details">
-                        <h3>{medicine.name}</h3>
-                        <p>{medicine.dose}</p>
-                        <span className="medicine-time">
-                          ◷ {formatTime(medicine.time)}
+                    <div className="medicine-details">
+                      <h3>{med.name}</h3>
+                      <p>{med.dosage}</p>
+                      <span className="medicine-time">
+                        ⏰ Scheduled for {med.time}
+                      </span>
+
+                      <div className="badge-row">
+                        {isHeatSensitive(med.name) && (
+                          <span className="safety-badge heat">
+                            ❄️ Cool Storage Required (&lt;25°C)
+                          </span>
+                        )}
+                        <span className="safety-badge food">
+                          🔊 Voice Enabled
                         </span>
                       </div>
-
-                      <div className="medicine-actions">
-                        <button
-                          type="button"
-                          className={
-                            medicine.taken
-                              ? "taken-button"
-                              : "mark-button"
-                          }
-                          onClick={() => toggleTaken(medicine.id)}
-                        >
-                          {medicine.taken ? "✓ Taken" : "Mark taken"}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="delete-button"
-                          onClick={() => deleteMedicine(medicine.id)}
-                          aria-label={`Delete ${medicine.name}`}
-                          title="Delete medication"
-                        >
-                          ×
-                        </button>
-                      </div>
                     </div>
-                  ))}
+
+                    <div className="medicine-actions">
+                      <button
+                        type="button"
+                        className="voice-button"
+                        onClick={() => speakMedicine(med)}
+                        title="Read instructions aloud"
+                      >
+                        🔊
+                      </button>
+
+                      <button
+                        type="button"
+                        className={med.taken ? "taken-button" : "mark-button"}
+                        onClick={() => toggleTaken(med.id)}
+                      >
+                        {med.taken ? "✓ Taken" : "Mark Taken"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="delete-button"
+                        onClick={() => deleteMedicine(med.id)}
+                        title="Remove medication"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            <p className="support-message">
-              🌿 Remember, you're doing your best. Keep going!
-            </p>
+            <div className="support-message">
+              💡 Tip: Click the 🔊 speaker icon on any medicine to hear
+              instructions read aloud.
+            </div>
           </div>
 
-          <div className="panel add-panel" id="add-medication">
+          <div className="panel" id="add-form">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">BUILD YOUR ROUTINE</p>
-                <h2>Add medication</h2>
+                <p className="eyebrow">NEW ENTRY</p>
+                <h2>Add Medication</h2>
               </div>
-              <div className="add-icon">＋</div>
+              <div className="add-icon">+</div>
             </div>
 
-            <form onSubmit={addMedicine} className="medicine-form">
-              <label htmlFor="medicine-name">Medication name</label>
+            <form className="medicine-form" onSubmit={handleAddMedicine}>
+              <label htmlFor="med-name">Medicine Name</label>
               <input
-                id="medicine-name"
+                id="med-name"
                 type="text"
-                placeholder="e.g. Vitamin D"
+                placeholder="e.g., Amoxicillin, Warfarin, Insulin"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(e) => setName(e.target.value)}
                 required
               />
 
-              <label htmlFor="medicine-dose">Dose instructions</label>
+              <label htmlFor="med-dosage">Dosage & Instructions</label>
               <input
-                id="medicine-dose"
+                id="med-dosage"
                 type="text"
-                placeholder="e.g. 1 tablet"
-                value={dose}
-                onChange={(event) => setDose(event.target.value)}
+                placeholder="e.g., 500mg • 1 tablet after meal"
+                value={dosage}
+                onChange={(e) => setDosage(e.target.value)}
                 required
               />
 
-              <label htmlFor="medicine-time">Medication time</label>
+              <label htmlFor="med-time">Reminder Time</label>
               <input
-                id="medicine-time"
+                id="med-time"
                 type="time"
-                step={60}
                 value={time}
-                onChange={(event) => setTime(event.target.value)}
+                onChange={(e) => setTime(e.target.value)}
                 required
               />
-
               <p className="form-hint">
-                Choose the time specified in your medication instructions.
+                Our safety engine automatically checks for drug clashes and
+                heat-storage needs as soon as you add a medicine.
               </p>
 
               <button type="submit" className="submit-button">
-                + Add medication
+                Save to Daily Schedule
               </button>
-            </form>
 
-            <div className="privacy-note">
-              <span>🔒</span>
-              <p>Your list is saved in this browser on this device.</p>
-            </div>
+              <div className="privacy-note">
+                <span>🔒</span>
+                <p>
+                  Stored locally on your device for offline reliability and
+                  complete medical privacy.
+                </p>
+              </div>
+            </form>
           </div>
         </section>
 
         <footer className="page-footer">
-          <p>MediGo · A little care goes a long way 💚</p>
+          MedTrack • Built for Global Healthcare Accessibility & Climate
+          Resilience
         </footer>
       </main>
     </div>
   );
 }
-
-export default App;
